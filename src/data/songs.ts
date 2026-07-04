@@ -16,9 +16,14 @@ export interface Song {
   artist: string;
   /** 封面漸層(無版權圖時的佔位視覺) */
   gradient: string;
-  audioUrl: string;
-  lrc: string;
-  jianpu: JianpuScore;
+  /** 無合法公開音源的曲目省略,播放時由使用者選擇本機音檔 */
+  audioUrl?: string;
+  /** 內建歌詞;省略時可搭配 lrcQuery 由公開 API 抓取 */
+  lrc?: string;
+  /** LRCLIB 公開歌詞 API 查詢條件(執行期抓取,不入庫) */
+  lrcQuery?: { artist: string; track: string };
+  /** 內建簡譜;省略時可在簡譜頁貼上公開簡譜圖片網址 */
+  jianpu?: JianpuScore;
   tags: string[];
 }
 
@@ -41,6 +46,17 @@ const DEMO_JIANPU: JianpuScore = {
 };
 
 export const SONGS: Song[] = [
+  {
+    id: "xiaocheng-gushi",
+    title: "小城故事",
+    artist: "鄧麗君",
+    gradient: "from-emerald-500 via-teal-500 to-cyan-500",
+    tags: ["熱門", "唱歌", "薩克斯風", "鋼琴"],
+    // 歌詞:執行期由 LRCLIB 公開 API 抓取(含同步時間軸)
+    lrcQuery: { artist: "鄧麗君", track: "小城故事" },
+    // 音檔:錄音室版本受版權保護,無公開音源 → 播放時選擇本機音檔
+    // 簡譜:於簡譜頁貼上公開簡譜圖片網址顯示
+  },
   {
     id: "helix-1",
     title: "晨光練習曲",

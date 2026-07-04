@@ -1,13 +1,16 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import JianpuView from "../components/JianpuView";
 import { SONGS } from "../data/songs";
 import { usePlayer } from "../store/PlayerContext";
+import { getLocalAudio } from "../store/localAudio";
 import { INSTRUMENT_TRANSPOSE, transposeKey } from "../lib/jianpu";
 import { Play, Pause } from "lucide-react";
 
 /** 薩克斯風頁:單行簡譜 + Eb/Bb 移調(首調記譜 → 只需改變 1= 調號) */
 export default function Saxophone() {
   const { current, isPlaying, playSong, toggle } = usePlayer();
+  const navigate = useNavigate();
   const [songId, setSongId] = useState(SONGS[0].id);
   const [transposeId, setTransposeId] = useState<string>("concert");
   const song = SONGS.find((s) => s.id === songId) ?? SONGS[0];
@@ -56,14 +59,19 @@ export default function Saxophone() {
       <div className="min-h-0 flex-1">
         <JianpuView
           score={song.jianpu}
+          songId={song.id}
           mode="single"
-          displayKey={transposeKey(song.jianpu.key, semitones)}
+          displayKey={song.jianpu ? transposeKey(song.jianpu.key, semitones) : undefined}
         />
       </div>
 
       <button
         type="button"
-        onClick={() => (current?.id === song.id ? toggle() : playSong(song))}
+        onClick={() => {
+          if (current?.id === song.id) return toggle();
+          if (song.audioUrl || getLocalAudio(song.id)) return playSong(song);
+          navigate(`/song/${song.id}`); // 無公開音源 → 到單曲頁選擇本機音檔
+        }}
         className="mx-4 flex items-center justify-center gap-2 rounded-2xl bg-indigo-500
                    py-3 font-semibold text-white active:scale-[0.98]"
       >

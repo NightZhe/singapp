@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ChevronDown,
+  FolderOpen,
   Music,
   Pause,
   Play,
@@ -13,6 +14,8 @@ import LyricsScroller from "../components/LyricsScroller";
 import JianpuView from "../components/JianpuView";
 import { getSong } from "../data/songs";
 import { formatTime, usePlayer } from "../store/PlayerContext";
+import { getLocalAudio, setLocalAudio } from "../store/localAudio";
+import { useLyrics } from "../lib/useLyrics";
 
 type Tab = "lyrics" | "jianpu";
 
@@ -24,6 +27,10 @@ export default function SongPlayer() {
   const { current, isPlaying, time, duration, volume, playSong, toggle, seek, setVolume } =
     usePlayer();
   const [tab, setTab] = useState<Tab>("lyrics");
+  const [localReady, setLocalReady] = useState(false);
+  const { lrc, loading: lrcLoading, error: lrcError } = useLyrics(song);
+  const hasAudio =
+    Boolean(song?.audioUrl) || localReady || Boolean(song && getLocalAudio(song.id));
 
   // 進入頁面時若尚未載入此曲,自動開始播放
   useEffect(() => {
@@ -93,11 +100,45 @@ export default function SongPlayer() {
       {/* 內容區 */}
       <div className="min-h-0 flex-1 pt-2">
         {tab === "lyrics" ? (
-          <LyricsScroller lrc={song.lrc} time={time} onSeek={seek} />
+          lrcLoading ? (
+            <p className="pt-16 text-center text-sm text-slate-500">
+              正在從公開歌詞庫抓取歌詞…
+            </p>
+          ) : lrcError ? (
+            <p className="px-8 pt-16 text-center text-sm text-slate-500">
+              歌詞抓取失敗,請確認網路後重新進入此頁
+            </p>
+          ) : (
+            <LyricsScroller lrc={lrc} time={time} onSeek={seek} />
+          )
         ) : (
-          <JianpuView score={song.jianpu} mode="single" />
+          <JianpuView score={song.jianpu} songId={song.id} mode="single" />
         )}
       </div>
+
+      {/* 無公開音源:選擇本機音檔 */}
+      {!hasAudio && (
+        <label
+          className="mx-4 mb-2 flex cursor-pointer items-center justify-center gap-2
+                     rounded-2xl border border-dashed border-slate-600 bg-slate-900/70
+                     py-3 text-sm font-medium text-indigo-300 active:scale-[0.98]"
+        >
+          <FolderOpen size={16} />
+          此曲目無公開音源,點此選擇本機音檔播放
+          <input
+            type="file"
+            accept="audio/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              setLocalAudio(song.id, URL.createObjectURL(file));
+              setLocalReady(true);
+              playSong(song);
+            }}
+          />
+        </label>
+      )}
 
       {/* 播放控制列 */}
       <div

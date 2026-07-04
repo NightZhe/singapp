@@ -9,6 +9,7 @@ import {
   type ReactNode
 } from "react";
 import type { Song } from "../data/songs";
+import { getLocalAudio } from "./localAudio";
 
 interface PlayerState {
   current: Song | null;
@@ -56,14 +57,22 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const playSong = useCallback((song: Song) => {
     const audio = audioRef.current;
     if (!audio) return;
-    setCurrent((prev) => {
-      if (prev?.id !== song.id) {
-        audio.src = song.audioUrl;
-        setTime(0);
-        setDuration(0);
-      }
-      return song;
-    });
+    const src = song.audioUrl ?? getLocalAudio(song.id);
+    setCurrent(song);
+    if (!src) {
+      // 尚無音源(等待使用者選擇本機音檔):只切換目前曲目
+      audio.pause();
+      audio.removeAttribute("src");
+      setIsPlaying(false);
+      setTime(0);
+      setDuration(0);
+      return;
+    }
+    if (audio.src !== src) {
+      audio.src = src;
+      setTime(0);
+      setDuration(0);
+    }
     void audio.play().then(
       () => setIsPlaying(true),
       () => setIsPlaying(false)

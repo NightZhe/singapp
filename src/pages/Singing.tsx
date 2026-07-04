@@ -1,14 +1,19 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { MicVocal, Music2 } from "lucide-react";
 import LyricsScroller from "../components/LyricsScroller";
 import { SONGS } from "../data/songs";
 import { usePlayer } from "../store/PlayerContext";
+import { getLocalAudio } from "../store/localAudio";
+import { useLyrics } from "../lib/useLyrics";
 
 /** 唱歌頁:動態歌詞滿版顯示 + 人聲/伴奏切換提示 */
 export default function Singing() {
   const { current, time, seek, playSong } = usePlayer();
+  const navigate = useNavigate();
   const song = current ?? SONGS[0];
   const [vocalOn, setVocalOn] = useState(true);
+  const { lrc, loading: lrcLoading } = useLyrics(song);
 
   return (
     <div
@@ -48,13 +53,23 @@ export default function Singing() {
       )}
 
       <div className="min-h-0 flex-1">
-        <LyricsScroller lrc={song.lrc} time={time} onSeek={seek} size="lg" />
+        {lrcLoading ? (
+          <p className="pt-16 text-center text-sm text-slate-500">
+            正在從公開歌詞庫抓取歌詞…
+          </p>
+        ) : (
+          <LyricsScroller lrc={lrc} time={time} onSeek={seek} size="lg" />
+        )}
       </div>
 
       {!current && (
         <button
           type="button"
-          onClick={() => playSong(song)}
+          onClick={() =>
+            song.audioUrl || getLocalAudio(song.id)
+              ? playSong(song)
+              : navigate(`/song/${song.id}`) // 無公開音源 → 到單曲頁選擇本機音檔
+          }
           className="mx-4 rounded-2xl bg-indigo-500 py-3 font-semibold text-white active:scale-[0.98]"
         >
           開始播放並跟唱

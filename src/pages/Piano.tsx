@@ -86,7 +86,7 @@ export default function Piano() {
       )}
 
       <div className="min-h-0 flex-1">
-        <JianpuView score={song.jianpu} mode="double" />
+        <JianpuView score={song.jianpu} songId={song.id} mode="double" />
       </div>
     </div>
   );
