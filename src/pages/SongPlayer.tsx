@@ -16,6 +16,7 @@ import { getSong } from "../data/songs";
 import { formatTime, usePlayer } from "../store/PlayerContext";
 import { getLocalAudio, setLocalAudio } from "../store/localAudio";
 import { useLyrics } from "../lib/useLyrics";
+import { parseYouTubeInput, resolveYoutubeId, setStoredYoutubeId } from "../lib/youtube";
 
 type Tab = "lyrics" | "jianpu";
 
@@ -28,9 +29,14 @@ export default function SongPlayer() {
     usePlayer();
   const [tab, setTab] = useState<Tab>("lyrics");
   const [localReady, setLocalReady] = useState(false);
+  const [ytDraft, setYtDraft] = useState("");
+  const [ytError, setYtError] = useState(false);
   const { lrc, loading: lrcLoading, error: lrcError } = useLyrics(song);
-  const hasAudio =
-    Boolean(song?.audioUrl) || localReady || Boolean(song && getLocalAudio(song.id));
+  const hasSource =
+    localReady ||
+    Boolean(
+      song && (song.audioUrl || getLocalAudio(song.id) || resolveYoutubeId(song))
+    );
 
   // 進入頁面時若尚未載入此曲,自動開始播放
   useEffect(() => {
@@ -116,28 +122,63 @@ export default function SongPlayer() {
         )}
       </div>
 
-      {/* 無公開音源:選擇本機音檔 */}
-      {!hasAudio && (
-        <label
-          className="mx-4 mb-2 flex cursor-pointer items-center justify-center gap-2
-                     rounded-2xl border border-dashed border-slate-600 bg-slate-900/70
-                     py-3 text-sm font-medium text-indigo-300 active:scale-[0.98]"
-        >
-          <FolderOpen size={16} />
-          此曲目無公開音源,點此選擇本機音檔播放
-          <input
-            type="file"
-            accept="audio/*"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              setLocalAudio(song.id, URL.createObjectURL(file));
-              setLocalReady(true);
-              playSong(song);
-            }}
-          />
-        </label>
+      {/* 無音源:貼 YouTube 連結或選擇本機音檔 */}
+      {!hasSource && (
+        <div className="mx-4 mb-2 space-y-2">
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={ytDraft}
+              onChange={(e) => {
+                setYtDraft(e.target.value);
+                setYtError(false);
+              }}
+              placeholder="貼上 YouTube 連結作為音源"
+              className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-900
+                         px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-600
+                         focus:border-indigo-500 focus:outline-none"
+            />
+            <button
+              type="button"
+              disabled={!ytDraft.trim()}
+              onClick={() => {
+                const videoId = parseYouTubeInput(ytDraft);
+                if (!videoId) return setYtError(true);
+                setStoredYoutubeId(song.id, videoId);
+                playSong(song);
+              }}
+              className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white
+                         disabled:opacity-40"
+            >
+              串接
+            </button>
+          </div>
+          {ytError && (
+            <p className="text-center text-xs text-rose-400">
+              無法解析這個連結,請貼 youtube.com/watch 或 youtu.be 網址
+            </p>
+          )}
+          <label
+            className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl
+                       border border-dashed border-slate-600 bg-slate-900/70 py-3
+                       text-sm font-medium text-indigo-300 active:scale-[0.98]"
+          >
+            <FolderOpen size={16} />
+            或選擇本機音檔播放
+            <input
+              type="file"
+              accept="audio/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setLocalAudio(song.id, URL.createObjectURL(file));
+                setLocalReady(true);
+                playSong(song);
+              }}
+            />
+          </label>
+        </div>
       )}
 
       {/* 播放控制列 */}

@@ -24,6 +24,8 @@ export interface Song {
   lrcQuery?: { artist: string; track: string };
   /** 內建簡譜;省略時可在簡譜頁貼上公開簡譜圖片網址 */
   jianpu?: JianpuScore;
+  /** YouTube 影片 ID:以官方 IFrame Player 嵌入播放(使用者亦可貼連結覆蓋) */
+  youtubeId?: string;
   tags: string[];
 }
 
@@ -54,7 +56,8 @@ export const SONGS: Song[] = [
     tags: ["熱門", "唱歌", "薩克斯風", "鋼琴"],
     // 歌詞:執行期由 LRCLIB 公開 API 抓取(含同步時間軸)
     lrcQuery: { artist: "鄧麗君", track: "小城故事" },
-    // 音檔:錄音室版本受版權保護,無公開音源 → 播放時選擇本機音檔
+    // 音源:YouTube 官方授權音軌(Teresa Teng - Topic),以 IFrame Player 嵌入播放
+    youtubeId: "n-jHlCu0k2I",
     // 簡譜:於簡譜頁貼上公開簡譜圖片網址顯示
   },
   {

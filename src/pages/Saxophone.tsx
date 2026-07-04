@@ -4,6 +4,7 @@ import JianpuView from "../components/JianpuView";
 import { SONGS } from "../data/songs";
 import { usePlayer } from "../store/PlayerContext";
 import { getLocalAudio } from "../store/localAudio";
+import { resolveYoutubeId } from "../lib/youtube";
 import { INSTRUMENT_TRANSPOSE, transposeKey } from "../lib/jianpu";
 import { Play, Pause } from "lucide-react";
 
@@ -69,8 +70,9 @@ export default function Saxophone() {
         type="button"
         onClick={() => {
           if (current?.id === song.id) return toggle();
-          if (song.audioUrl || getLocalAudio(song.id)) return playSong(song);
-          navigate(`/song/${song.id}`); // 無公開音源 → 到單曲頁選擇本機音檔
+          if (song.audioUrl || getLocalAudio(song.id) || resolveYoutubeId(song))
+            return playSong(song);
+          navigate(`/song/${song.id}`); // 無音源 → 到單曲頁設定 YouTube/本機音檔
         }}
         className="mx-4 flex items-center justify-center gap-2 rounded-2xl bg-indigo-500
                    py-3 font-semibold text-white active:scale-[0.98]"

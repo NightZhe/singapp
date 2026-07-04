@@ -6,6 +6,7 @@ import { SONGS } from "../data/songs";
 import { usePlayer } from "../store/PlayerContext";
 import { getLocalAudio } from "../store/localAudio";
 import { useLyrics } from "../lib/useLyrics";
+import { resolveYoutubeId } from "../lib/youtube";
 
 /** 唱歌頁:動態歌詞滿版顯示 + 人聲/伴奏切換提示 */
 export default function Singing() {
@@ -66,9 +67,9 @@ export default function Singing() {
         <button
           type="button"
           onClick={() =>
-            song.audioUrl || getLocalAudio(song.id)
+            song.audioUrl || getLocalAudio(song.id) || resolveYoutubeId(song)
               ? playSong(song)
-              : navigate(`/song/${song.id}`) // 無公開音源 → 到單曲頁選擇本機音檔
+              : navigate(`/song/${song.id}`) // 無音源 → 到單曲頁設定 YouTube/本機音檔
           }
           className="mx-4 rounded-2xl bg-indigo-500 py-3 font-semibold text-white active:scale-[0.98]"
         >
