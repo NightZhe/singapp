@@ -34,8 +34,21 @@ function Token({
   lyricSlot?: boolean;
   active?: boolean;
 }) {
-  if (t.type === "bar") return <span className="mx-1 text-slate-600">|</span>;
-  if (t.type === "dash") return <span className="mx-1 text-slate-300">–</span>;
+  // 小節線與長音線也用與音符相同的直欄結構,確保 glyph 與數字垂直置中對齊
+  if (t.type === "bar" || t.type === "dash") {
+    return (
+      <span className="mx-1 inline-flex flex-col items-center">
+        <span className="h-2 text-[0.5em] leading-none"> </span>
+        <span
+          className={`leading-none ${t.type === "bar" ? "text-slate-600" : "text-slate-300"}`}
+        >
+          {t.type === "bar" ? "|" : "–"}
+        </span>
+        <span className="h-2 text-[0.5em] leading-none"> </span>
+        {lyricSlot && <span className="mt-1 text-[0.55em] leading-none"> </span>}
+      </span>
+    );
+  }
   const octave = t.octave ?? 0;
   return (
     <span className="relative mx-1 inline-flex flex-col items-center">
