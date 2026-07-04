@@ -45,7 +45,14 @@ function Token({
           {t.type === "bar" ? "|" : "–"}
         </span>
         <span className="h-2 text-[0.5em] leading-none"> </span>
-        {lyricSlot && <span className="mt-1 text-[0.55em] leading-none"> </span>}
+        {lyricSlot && (
+          <span
+            className={`mt-1 text-[0.55em] leading-none transition-colors duration-150
+              ${active ? "font-bold text-white" : "text-slate-400"}`}
+          >
+            {lyric ?? " "}
+          </span>
+        )}
       </span>
     );
   }
@@ -196,7 +203,12 @@ export default function JianpuView({
       <Token
         key={j}
         t={t}
-        lyric={t.type === "note" ? chars[ci++] : undefined}
+        lyric={
+          // 音符依序取字;音符用完後剩餘的字(拖腔)落在長音線上
+          t.type === "note" || (t.type === "dash" && ci < chars.length)
+            ? chars[ci++]
+            : undefined
+        }
         lyricSlot={chars.length > 0}
         active={j === activeTokenIdx}
       />
