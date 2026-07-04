@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+:root {
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: #020617; /* slate-950 */
+  color: #f1f5f9; /* slate-100 */
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, "PingFang TC", "Noto Sans TC",
+    "Microsoft JhengHei", sans-serif;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+/* 進度條 / 音量滑桿外觀 */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to right,
+    #6366f1 0%,
+    #6366f1 var(--fill, 0%),
+    #334155 var(--fill, 0%),
+    #334155 100%
+  );
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: #e0e7ff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.5);
+}
