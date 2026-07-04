@@ -147,17 +147,25 @@ export default function JianpuView({
       : score.lines.map((l) => [l])
     : [];
 
-  // 動態跑譜:目前播放時間對應的簡譜行(與歌詞行逐一配對)
-  const activeLine =
+  // 動態跑譜:目前播放時間對應的歌詞行(與簡譜行逐一配對)
+  const activeLyricIdx =
     timedLyrics && timedLyrics.length > 0 && time !== undefined
       ? activeLrcIndex(timedLyrics, time)
       : -1;
 
+  // 重唱段(歌詞行數多於譜行數)以相同歌詞回頭對映到既有譜行
+  let activeRow = activeLyricIdx;
+  if (timedLyrics && activeRow >= rows.length) {
+    const text = timedLyrics[activeRow]?.text;
+    const first = timedLyrics.findIndex((l) => l.text === text);
+    activeRow = first >= 0 && first < rows.length ? first : -1;
+  }
+
   // 當前行自動捲動置中
   useEffect(() => {
-    if (activeLine < 0 || activeLine >= rows.length) return;
-    lineRefs.current[activeLine]?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [activeLine, rows.length]);
+    if (activeRow < 0 || activeRow >= rows.length) return;
+    lineRefs.current[activeRow]?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [activeRow, rows.length]);
 
   /** 解析 + 級數移調 + 歌詞逐字對位;當前行再依節拍推進音符高亮 */
   const renderTokens = (line: string, lyric?: string, lineIdx?: number) => {
@@ -168,13 +176,14 @@ export default function JianpuView({
     let activeTokenIdx = -1;
     if (
       lineIdx !== undefined &&
-      lineIdx === activeLine &&
+      lineIdx === activeRow &&
+      activeLyricIdx >= 0 &&
       score &&
       time !== undefined &&
       timedLyrics
     ) {
       const beatDur = 60 / (score.tempo || 80);
-      const elapsedBeats = (time - timedLyrics[activeLine].time) / beatDur;
+      const elapsedBeats = (time - timedLyrics[activeLyricIdx].time) / beatDur;
       let acc = 0;
       tokens.forEach((t, idx) => {
         if (t.type === "note" && acc <= elapsedBeats) activeTokenIdx = idx;
@@ -261,7 +270,7 @@ export default function JianpuView({
                   lineRefs.current[i] = el;
                 }}
                 className={`mb-4 rounded-xl px-2 py-3 transition-colors duration-300 ${
-                  i === activeLine
+                  i === activeRow
                     ? "bg-indigo-500/10 ring-1 ring-indigo-400/40"
                     : mode === "double"
                       ? "bg-slate-900/60"

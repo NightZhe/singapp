@@ -51,7 +51,7 @@ export function parseJianpuLine(line: string): JianpuToken[] {
     .split(/\s+/)
     .filter(Boolean)
     .map((tok): JianpuToken => {
-      if (tok === "|") return { type: "bar" };
+      if (/^\|+$/.test(tok)) return { type: "bar" }; // 含 "||" 終止線
       if (tok === "-") return { type: "dash" };
       const m = tok.match(/^([0-7])('*)(,*)(_*)$/);
       if (!m) return { type: "rest", degree: 0 };
