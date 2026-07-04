@@ -1,6 +1,7 @@
-import { useRef, useState, type TouchEvent } from "react";
+import { useEffect, useRef, useState, type TouchEvent } from "react";
 import { ImagePlus, Trash2, ZoomIn, ZoomOut } from "lucide-react";
 import { parseJianpuLine, transposeToken, type JianpuToken } from "../lib/jianpu";
+import { activeLrcIndex, type LrcLine } from "../lib/lrc";
 import type { JianpuScore } from "../data/songs";
 
 interface Props {
@@ -16,18 +17,22 @@ interface Props {
   degreeShift?: number;
   /** 移調狀態標示(顯示於譜表資訊列) */
   shiftLabel?: string;
-  /** 每行簡譜對應的歌詞,逐字對位到音符下方(僅 single 模式) */
-  lyricLines?: string[];
+  /** 每行簡譜對應的歌詞(含 LRC 時間軸),逐字對位到音符下方(僅 single 模式) */
+  timedLyrics?: LrcLine[];
+  /** 目前播放秒數:提供後簡譜隨播放動態跑(行高亮 + 音符節拍推進 + 自動捲動) */
+  time?: number;
 }
 
 function Token({
   t,
   lyric,
-  lyricSlot
+  lyricSlot,
+  active
 }: {
   t: JianpuToken;
   lyric?: string;
   lyricSlot?: boolean;
+  active?: boolean;
 }) {
   if (t.type === "bar") return <span className="mx-1 text-slate-600">|</span>;
   if (t.type === "dash") return <span className="mx-1 text-slate-300">–</span>;
@@ -39,7 +44,14 @@ function Token({
         {octave > 0 ? "•".repeat(octave) : " "}
       </span>
       <span
-        className={`leading-none ${t.type === "rest" ? "text-slate-500" : "text-slate-100"}
+        className={`leading-none transition-colors duration-150
+          ${
+            active
+              ? "scale-110 text-indigo-300 drop-shadow-[0_0_10px_rgba(129,140,248,0.9)]"
+              : t.type === "rest"
+                ? "text-slate-500"
+                : "text-slate-100"
+          }
           ${t.underline ? "border-b border-slate-300" : ""}
           ${(t.underline ?? 0) > 1 ? "border-b-2" : ""}`}
       >
@@ -51,13 +63,20 @@ function Token({
       </span>
       {/* 歌詞逐字對位 */}
       {lyricSlot && (
-        <span className="mt-1 text-[0.55em] leading-none text-slate-400">
+        <span
+          className={`mt-1 text-[0.55em] leading-none transition-colors duration-150
+            ${active ? "font-bold text-white" : "text-slate-400"}`}
+        >
           {lyric ?? " "}
         </span>
       )}
     </span>
   );
 }
+
+/** 各記號佔的拍數：音符依底線減半、長音線與休止符 1 拍、小節線 0 拍 */
+const tokenBeats = (t: JianpuToken): number =>
+  t.type === "bar" ? 0 : t.type === "note" ? 1 / 2 ** (t.underline ?? 0) : 1;
 
 const imgKey = (songId: string) => `jianpu-img-${songId}`;
 
@@ -69,10 +88,12 @@ export default function JianpuView({
   displayKey,
   degreeShift = 0,
   shiftLabel,
-  lyricLines
+  timedLyrics,
+  time
 }: Props) {
   const [scale, setScale] = useState(1);
   const pinchStart = useRef<{ dist: number; scale: number } | null>(null);
+  const lineRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [imageUrl, setImageUrl] = useState(() =>
     songId ? localStorage.getItem(imgKey(songId)) ?? "" : ""
   );
@@ -113,10 +134,41 @@ export default function JianpuView({
       : score.lines.map((l) => [l])
     : [];
 
-  /** 解析 + 級數移調 + 歌詞逐字對位(一個音符配一個字,長音線與小節線跳過) */
-  const renderTokens = (line: string, lyric?: string) => {
+  // 動態跑譜:目前播放時間對應的簡譜行(與歌詞行逐一配對)
+  const activeLine =
+    timedLyrics && timedLyrics.length > 0 && time !== undefined
+      ? activeLrcIndex(timedLyrics, time)
+      : -1;
+
+  // 當前行自動捲動置中
+  useEffect(() => {
+    if (activeLine < 0 || activeLine >= rows.length) return;
+    lineRefs.current[activeLine]?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [activeLine, rows.length]);
+
+  /** 解析 + 級數移調 + 歌詞逐字對位;當前行再依節拍推進音符高亮 */
+  const renderTokens = (line: string, lyric?: string, lineIdx?: number) => {
     const tokens = parseJianpuLine(line).map((t) => transposeToken(t, degreeShift));
     const chars = lyric ? Array.from(lyric.replace(/\s+/g, "")) : [];
+
+    // 依 LRC 行起始時間 + 速度(♩=tempo)推算目前唱到哪個音符
+    let activeTokenIdx = -1;
+    if (
+      lineIdx !== undefined &&
+      lineIdx === activeLine &&
+      score &&
+      time !== undefined &&
+      timedLyrics
+    ) {
+      const beatDur = 60 / (score.tempo || 80);
+      const elapsedBeats = (time - timedLyrics[activeLine].time) / beatDur;
+      let acc = 0;
+      tokens.forEach((t, idx) => {
+        if (t.type === "note" && acc <= elapsedBeats) activeTokenIdx = idx;
+        acc += tokenBeats(t);
+      });
+    }
+
     let ci = 0;
     return tokens.map((t, j) => (
       <Token
@@ -124,6 +176,7 @@ export default function JianpuView({
         t={t}
         lyric={t.type === "note" ? chars[ci++] : undefined}
         lyricSlot={chars.length > 0}
+        active={j === activeTokenIdx}
       />
     ));
   };
@@ -191,12 +244,23 @@ export default function JianpuView({
             {rows.map(([melody, accomp], i) => (
               <div
                 key={i}
-                className={`mb-4 rounded-xl px-2 py-3 ${
-                  mode === "double" ? "bg-slate-900/60" : ""
+                ref={(el) => {
+                  lineRefs.current[i] = el;
+                }}
+                className={`mb-4 rounded-xl px-2 py-3 transition-colors duration-300 ${
+                  i === activeLine
+                    ? "bg-indigo-500/10 ring-1 ring-indigo-400/40"
+                    : mode === "double"
+                      ? "bg-slate-900/60"
+                      : ""
                 }`}
               >
                 <div className="whitespace-nowrap">
-                  {renderTokens(melody, mode === "single" ? lyricLines?.[i] : undefined)}
+                  {renderTokens(
+                    melody,
+                    mode === "single" ? timedLyrics?.[i]?.text : undefined,
+                    i
+                  )}
                 </div>
                 {accomp && (
                   <div className="mt-2 whitespace-nowrap border-t border-slate-800 pt-2 opacity-80">

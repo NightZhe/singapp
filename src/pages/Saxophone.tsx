@@ -7,12 +7,12 @@ import { getLocalAudio } from "../store/localAudio";
 import { resolveYoutubeId } from "../lib/youtube";
 import { INSTRUMENT_TRANSPOSE } from "../lib/jianpu";
 import { useJianpu } from "../lib/useJianpu";
-import { useLyricLines } from "../lib/useLyrics";
+import { useTimedLyricLines } from "../lib/useLyrics";
 import { Play, Pause } from "lucide-react";
 
 /** 薩克斯風頁:單行簡譜 + Eb/Bb 移調(首調記譜 → 只需改變 1= 調號) */
 export default function Saxophone() {
-  const { current, isPlaying, playSong, toggle } = usePlayer();
+  const { current, isPlaying, time, playSong, toggle } = usePlayer();
   const navigate = useNavigate();
   const [songId, setSongId] = useState(SONGS[0].id);
   const [transposeId, setTransposeId] = useState<string>("concert");
@@ -20,7 +20,7 @@ export default function Saxophone() {
   const preset =
     INSTRUMENT_TRANSPOSE.find((t) => t.id === transposeId) ?? INSTRUMENT_TRANSPOSE[0];
   const { score, loading: scoreLoading } = useJianpu(song);
-  const lyricLines = useLyricLines(song);
+  const timedLyrics = useTimedLyricLines(song);
 
   return (
     <div className="flex h-dvh flex-col pb-36" style={{ paddingTop: "var(--safe-top)" }}>
@@ -71,7 +71,8 @@ export default function Saxophone() {
             mode="single"
             degreeShift={preset.degreeSteps}
             shiftLabel={preset.degreeSteps !== 0 ? preset.label : undefined}
-            lyricLines={lyricLines}
+            timedLyrics={timedLyrics}
+            time={current?.id === song.id ? time : undefined}
           />
         )}
       </div>

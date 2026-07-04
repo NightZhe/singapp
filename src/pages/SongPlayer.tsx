@@ -15,7 +15,7 @@ import JianpuView from "../components/JianpuView";
 import { getSong } from "../data/songs";
 import { formatTime, usePlayer } from "../store/PlayerContext";
 import { getLocalAudio, setLocalAudio } from "../store/localAudio";
-import { useLyrics, useLyricLines } from "../lib/useLyrics";
+import { useLyrics, useTimedLyricLines } from "../lib/useLyrics";
 import { useJianpu } from "../lib/useJianpu";
 import { parseYouTubeInput, resolveYoutubeId, setStoredYoutubeId } from "../lib/youtube";
 
@@ -34,7 +34,7 @@ export default function SongPlayer() {
   const [ytError, setYtError] = useState(false);
   const { lrc, loading: lrcLoading, error: lrcError } = useLyrics(song);
   const { score, loading: scoreLoading } = useJianpu(song);
-  const lyricLines = useLyricLines(song);
+  const timedLyrics = useTimedLyricLines(song);
   const hasSource =
     localReady ||
     Boolean(
@@ -123,7 +123,13 @@ export default function SongPlayer() {
         ) : scoreLoading ? (
           <p className="pt-16 text-center text-sm text-slate-500">簡譜載入中…</p>
         ) : (
-          <JianpuView score={score} songId={song.id} mode="single" lyricLines={lyricLines} />
+          <JianpuView
+            score={score}
+            songId={song.id}
+            mode="single"
+            timedLyrics={timedLyrics}
+            time={current?.id === song.id ? time : undefined}
+          />
         )}
       </div>
 
