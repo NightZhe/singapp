@@ -6,6 +6,8 @@ export interface JianpuScore {
   tempo: number;
   /** 單行簡譜(旋律) */
   lines: string[];
+  /** 純器樂行的索引(前奏/間奏),不參與歌詞對位 */
+  instrumentalLines?: number[];
   /** 雙行簡譜(鋼琴:上=旋律、下=伴奏),可省略 */
   pianoLines?: [string, string][];
 }

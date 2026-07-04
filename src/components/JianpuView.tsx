@@ -154,18 +154,31 @@ export default function JianpuView({
       : score.lines.map((l) => [l])
     : [];
 
-  // 動態跑譜:目前播放時間對應的歌詞行(與簡譜行逐一配對)
+  // 譜行 ↔ 歌詞行對映:前奏等器樂行不佔用歌詞行,其餘依序配對
+  const instrumental = new Set(score?.instrumentalLines ?? []);
+  const rowLyricIdx: number[] = [];
+  {
+    let li = 0;
+    rows.forEach((_, i) => {
+      rowLyricIdx[i] = instrumental.has(i) ? -1 : li++;
+    });
+  }
+
+  // 動態跑譜:目前播放時間對應的歌詞行
   const activeLyricIdx =
     timedLyrics && timedLyrics.length > 0 && time !== undefined
       ? activeLrcIndex(timedLyrics, time)
       : -1;
 
-  // 重唱段(歌詞行數多於譜行數)以相同歌詞回頭對映到既有譜行
-  let activeRow = activeLyricIdx;
-  if (timedLyrics && activeRow >= rows.length) {
-    const text = timedLyrics[activeRow]?.text;
-    const first = timedLyrics.findIndex((l) => l.text === text);
-    activeRow = first >= 0 && first < rows.length ? first : -1;
+  // 找出該歌詞行對應的譜行;重唱段(歌詞行超出譜行)以相同歌詞回頭對映
+  let activeRow = -1;
+  if (activeLyricIdx >= 0 && timedLyrics) {
+    activeRow = rowLyricIdx.indexOf(activeLyricIdx);
+    if (activeRow < 0) {
+      const text = timedLyrics[activeLyricIdx]?.text;
+      const first = timedLyrics.findIndex((l) => l.text === text);
+      activeRow = rowLyricIdx.indexOf(first);
+    }
   }
 
   // 當前行自動捲動置中
@@ -292,7 +305,9 @@ export default function JianpuView({
                 <div className="whitespace-nowrap">
                   {renderTokens(
                     melody,
-                    mode === "single" ? timedLyrics?.[i]?.text : undefined,
+                    mode === "single" && rowLyricIdx[i] >= 0
+                      ? timedLyrics?.[rowLyricIdx[i]]?.text
+                      : undefined,
                     i
                   )}
                 </div>
