@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { RotateCw, Minimize2 } from "lucide-react";
 import JianpuView from "../components/JianpuView";
 import { SONGS } from "../data/songs";
+import { useJianpu } from "../lib/useJianpu";
 
 /** 鋼琴頁:雙行簡譜(旋律+伴奏),支援一鍵切換橫向全螢幕看譜 */
 export default function Piano() {
   const [songId, setSongId] = useState(SONGS[0].id);
   const [fullscreen, setFullscreen] = useState(false);
   const song = SONGS.find((s) => s.id === songId) ?? SONGS[0];
+  const { score, loading: scoreLoading } = useJianpu(song);
 
   useEffect(() => {
     const onChange = () => setFullscreen(Boolean(document.fullscreenElement));
@@ -86,7 +88,11 @@ export default function Piano() {
       )}
 
       <div className="min-h-0 flex-1">
-        <JianpuView score={song.jianpu} songId={song.id} mode="double" />
+        {scoreLoading ? (
+          <p className="pt-12 text-center text-sm text-slate-500">簡譜載入中…</p>
+        ) : (
+          <JianpuView score={score} songId={song.id} mode="double" />
+        )}
       </div>
     </div>
   );

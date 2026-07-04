@@ -24,6 +24,8 @@ export interface Song {
   lrcQuery?: { artist: string; track: string };
   /** 內建簡譜;省略時可在簡譜頁貼上公開簡譜圖片網址 */
   jianpu?: JianpuScore;
+  /** 簡譜 JSON 檔路徑(相對於站台根目錄),前端執行期讀取 */
+  jianpuUrl?: string;
   /** YouTube 影片 ID:以官方 IFrame Player 嵌入播放(使用者亦可貼連結覆蓋) */
   youtubeId?: string;
   tags: string[];
@@ -58,7 +60,8 @@ export const SONGS: Song[] = [
     lrcQuery: { artist: "鄧麗君", track: "小城故事" },
     // 音源:YouTube 官方授權音軌(Teresa Teng - Topic),以 IFrame Player 嵌入播放
     youtubeId: "n-jHlCu0k2I",
-    // 簡譜:於簡譜頁貼上公開簡譜圖片網址顯示
+    // 簡譜:JSON 檔存旋律數字,歌詞由 LRCLIB 歌詞逐字對位到音符下方
+    jianpuUrl: "scores/xiaocheng-gushi.json",
   },
   {
     id: "helix-1",

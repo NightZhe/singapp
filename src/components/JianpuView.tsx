@@ -1,6 +1,6 @@
 import { useRef, useState, type TouchEvent } from "react";
 import { ImagePlus, Trash2, ZoomIn, ZoomOut } from "lucide-react";
-import { parseJianpuLine, type JianpuToken } from "../lib/jianpu";
+import { parseJianpuLine, transposeToken, type JianpuToken } from "../lib/jianpu";
 import type { JianpuScore } from "../data/songs";
 
 interface Props {
@@ -12,9 +12,23 @@ interface Props {
   mode?: "single" | "double";
   /** 顯示用調號(移調後),未提供則用 score.key */
   displayKey?: string;
+  /** 級數移調:直接改寫音符數字(例:Eb 調 -2 → 5 變 3) */
+  degreeShift?: number;
+  /** 移調狀態標示(顯示於譜表資訊列) */
+  shiftLabel?: string;
+  /** 每行簡譜對應的歌詞,逐字對位到音符下方(僅 single 模式) */
+  lyricLines?: string[];
 }
 
-function Token({ t }: { t: JianpuToken }) {
+function Token({
+  t,
+  lyric,
+  lyricSlot
+}: {
+  t: JianpuToken;
+  lyric?: string;
+  lyricSlot?: boolean;
+}) {
   if (t.type === "bar") return <span className="mx-1 text-slate-600">|</span>;
   if (t.type === "dash") return <span className="mx-1 text-slate-300">–</span>;
   const octave = t.octave ?? 0;
@@ -35,14 +49,28 @@ function Token({ t }: { t: JianpuToken }) {
       <span className="h-2 text-[0.5em] leading-none text-slate-300">
         {octave < 0 ? "•".repeat(-octave) : " "}
       </span>
+      {/* 歌詞逐字對位 */}
+      {lyricSlot && (
+        <span className="mt-1 text-[0.55em] leading-none text-slate-400">
+          {lyric ?? " "}
+        </span>
+      )}
     </span>
   );
 }
 
 const imgKey = (songId: string) => `jianpu-img-${songId}`;
 
-/** 簡譜渲染:內建資料或公開圖片皆可,支援雙指縮放與按鈕縮放 */
-export default function JianpuView({ score, songId, mode = "single", displayKey }: Props) {
+/** 簡譜渲染:內建資料或公開圖片皆可,支援雙指縮放、級數移調與歌詞對位 */
+export default function JianpuView({
+  score,
+  songId,
+  mode = "single",
+  displayKey,
+  degreeShift = 0,
+  shiftLabel,
+  lyricLines
+}: Props) {
   const [scale, setScale] = useState(1);
   const pinchStart = useRef<{ dist: number; scale: number } | null>(null);
   const [imageUrl, setImageUrl] = useState(() =>
@@ -85,6 +113,21 @@ export default function JianpuView({ score, songId, mode = "single", displayKey 
       : score.lines.map((l) => [l])
     : [];
 
+  /** 解析 + 級數移調 + 歌詞逐字對位(一個音符配一個字,長音線與小節線跳過) */
+  const renderTokens = (line: string, lyric?: string) => {
+    const tokens = parseJianpuLine(line).map((t) => transposeToken(t, degreeShift));
+    const chars = lyric ? Array.from(lyric.replace(/\s+/g, "")) : [];
+    let ci = 0;
+    return tokens.map((t, j) => (
+      <Token
+        key={j}
+        t={t}
+        lyric={t.type === "note" ? chars[ci++] : undefined}
+        lyricSlot={chars.length > 0}
+      />
+    ));
+  };
+
   return (
     <div className="flex h-full flex-col">
       {/* 譜表資訊 + 縮放控制 */}
@@ -97,6 +140,11 @@ export default function JianpuView({ score, songId, mode = "single", displayKey 
               </span>
               <span>{score.timeSignature}</span>
               <span>♩={score.tempo}</span>
+              {shiftLabel && (
+                <span className="rounded-md bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-300">
+                  {shiftLabel}指法
+                </span>
+              )}
             </>
           ) : (
             <span className="text-xs">公開簡譜圖片模式</span>
@@ -148,15 +196,11 @@ export default function JianpuView({ score, songId, mode = "single", displayKey 
                 }`}
               >
                 <div className="whitespace-nowrap">
-                  {parseJianpuLine(melody).map((t, j) => (
-                    <Token key={j} t={t} />
-                  ))}
+                  {renderTokens(melody, mode === "single" ? lyricLines?.[i] : undefined)}
                 </div>
                 {accomp && (
                   <div className="mt-2 whitespace-nowrap border-t border-slate-800 pt-2 opacity-80">
-                    {parseJianpuLine(accomp).map((t, j) => (
-                      <Token key={j} t={t} />
-                    ))}
+                    {renderTokens(accomp)}
                   </div>
                 )}
               </div>

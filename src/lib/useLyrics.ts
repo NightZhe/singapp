@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Song } from "../data/songs";
 import { fetchLrcFromLrclib } from "./lyricsApi";
+import { parseLrc } from "./lrc";
 
 const memCache = new Map<string, string>();
 
@@ -59,4 +60,16 @@ export function useLyrics(song: Song | null | undefined): {
   }, [song?.id, song?.lrc, song?.lrcQuery]);
 
   return state;
+}
+
+/** 取得可逐字對位到簡譜的歌詞行(去除空行與「(前奏)」等標記行) */
+export function useLyricLines(song: Song | null | undefined): string[] {
+  const { lrc } = useLyrics(song);
+  return useMemo(
+    () =>
+      parseLrc(lrc)
+        .map((l) => l.text)
+        .filter((t) => t && !/^[((]/.test(t)),
+    [lrc]
+  );
 }

@@ -5,7 +5,9 @@ import { SONGS } from "../data/songs";
 import { usePlayer } from "../store/PlayerContext";
 import { getLocalAudio } from "../store/localAudio";
 import { resolveYoutubeId } from "../lib/youtube";
-import { INSTRUMENT_TRANSPOSE, transposeKey } from "../lib/jianpu";
+import { INSTRUMENT_TRANSPOSE } from "../lib/jianpu";
+import { useJianpu } from "../lib/useJianpu";
+import { useLyricLines } from "../lib/useLyrics";
 import { Play, Pause } from "lucide-react";
 
 /** 薩克斯風頁:單行簡譜 + Eb/Bb 移調(首調記譜 → 只需改變 1= 調號) */
@@ -15,8 +17,10 @@ export default function Saxophone() {
   const [songId, setSongId] = useState(SONGS[0].id);
   const [transposeId, setTransposeId] = useState<string>("concert");
   const song = SONGS.find((s) => s.id === songId) ?? SONGS[0];
-  const semitones =
-    INSTRUMENT_TRANSPOSE.find((t) => t.id === transposeId)?.semitones ?? 0;
+  const preset =
+    INSTRUMENT_TRANSPOSE.find((t) => t.id === transposeId) ?? INSTRUMENT_TRANSPOSE[0];
+  const { score, loading: scoreLoading } = useJianpu(song);
+  const lyricLines = useLyricLines(song);
 
   return (
     <div className="flex h-dvh flex-col pb-36" style={{ paddingTop: "var(--safe-top)" }}>
@@ -58,12 +62,18 @@ export default function Saxophone() {
       </header>
 
       <div className="min-h-0 flex-1">
-        <JianpuView
-          score={song.jianpu}
-          songId={song.id}
-          mode="single"
-          displayKey={song.jianpu ? transposeKey(song.jianpu.key, semitones) : undefined}
-        />
+        {scoreLoading ? (
+          <p className="pt-12 text-center text-sm text-slate-500">簡譜載入中…</p>
+        ) : (
+          <JianpuView
+            score={score}
+            songId={song.id}
+            mode="single"
+            degreeShift={preset.degreeSteps}
+            shiftLabel={preset.degreeSteps !== 0 ? preset.label : undefined}
+            lyricLines={lyricLines}
+          />
+        )}
       </div>
 
       <button
